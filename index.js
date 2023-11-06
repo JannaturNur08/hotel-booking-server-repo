@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 3000;
@@ -82,6 +82,20 @@ async function run() {
 			console.log('logging out',user);
 			res.clearCookie('token',{maxAge: 0}).send({success:true})
 		})
+
+		app.get("/room", async (req, res) => {
+			const cursor = roomCollection.find();
+			const result = await cursor.toArray();
+			res.send(result);
+		});
+		app.get("/room/:id", async (req, res) => {
+			const id = req.params.id;
+			const filter = { _id: new ObjectId(id) };
+
+			const room = await roomCollection.findOne(filter);
+
+			res.send(room);
+		});
 
 		// Send a ping to confirm a successful connection
 		await client.db("admin").command({ ping: 1 });

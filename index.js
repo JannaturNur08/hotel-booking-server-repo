@@ -64,6 +64,7 @@ async function run() {
 		await client.connect();
 
 		const roomCollection = client.db("hotelBook").collection("rooms");
+		const bookingCollection = client.db('hotelBook').collection('bookings');
 
 		//jwt
 		app.post("/jwt",logger, async (req, res) => {
@@ -95,6 +96,17 @@ async function run() {
 			const room = await roomCollection.findOne(filter);
 
 			res.send(room);
+		});
+
+		app.post("/bookings", async (req, res) => {
+			const newBook = req.body;
+			const result = await bookingCollection.insertOne(newBook);
+			res.send(result);
+		});
+		app.get("/bookings", async (req, res) => {
+			const cursor = bookingCollection.find();
+			const result = await cursor.toArray();
+			res.send(result);
 		});
 
 		// Send a ping to confirm a successful connection

@@ -100,20 +100,31 @@ async function run() {
 		app.post("/bookings", async (req, res) => {
 			const newBooking = req.body;
 			console.log(newBooking);
-
 			const category_name = newBooking.category_name;
+			const existingBookings = await bookingCollection
+				.find({
+					category_name: category_name,
+					checkIn: { $lte: newBooking.checkOut },
+					checkOut: { $gte: newBooking.checkIn },
+				})
+				.toArray();
+				console.log("existing bookings",existingBookings);
+
 			const availableRooms = await roomCollection.findOne({
 				category_name: category_name,
 			});
 			console.log(availableRooms);
+			const totalRooms = availableRooms.rooms.room_number;
+			const roomsBooked = existingBookings.reduce(
+				(total, booking) => total + booking.room_number,
+				0
+			);
+			const availableRoomCount = totalRooms - roomsBooked;
 
-			if (
-				availableRooms &&
-				availableRooms.rooms.room_number >= newBooking.room_number
-			) {
+			if (availableRoomCount >= newBooking.room_number) {
 				const updateRoomCount =
-					availableRooms.rooms.room_number - newBooking.room_number;
-				console.log(updateRoomCount);
+					availableRoomCount - newBooking.room_number;
+				console.log('updated room count', updateRoomCount);
 				await roomCollection.updateOne(
 					{ category_name: category_name },
 					{
@@ -135,6 +146,13 @@ async function run() {
 			const email = req.params.email;
 			const products = await bookingCollection
 				.find({ email: email })
+				.toArray();
+			res.send(products);
+		});
+		app.get("/bookings/:category_name", async (req, res) => {
+			const category_name = req.params.category_name;
+			const products = await bookingCollection
+				.find({ category_name: category_name })
 				.toArray();
 			res.send(products);
 		});

@@ -137,11 +137,13 @@ async function run() {
 				res.status(400).json({ message: "Not enough available rooms" });
 			}
 		});
+
 		app.get("/bookings", async (req, res) => {
 			const cursor = bookingCollection.find();
 			const result = await cursor.toArray();
 			res.send(result);
 		});
+		
 		app.get("/bookings/:email", async (req, res) => {
 			const email = req.params.email;
 			const products = await bookingCollection
@@ -149,19 +151,21 @@ async function run() {
 				.toArray();
 			res.send(products);
 		});
-		app.get("/bookings/:category_name", async (req, res) => {
-			const category_name = req.params.category_name;
-			const products = await bookingCollection
-				.find({ category_name: category_name })
-				.toArray();
-			res.send(products);
-		});
 		app.delete("/bookings/:id", async (req, res) => {
 			const id = req.params.id;
-			const query = { _id: new ObjectId(id) };
+			const query = { _id: new ObjectId(id)};
 			const result = await bookingCollection.deleteOne(query);
 			res.send(result);
 		});
+		
+		// app.get("/bookings/:category_name", async (req, res) => {
+		// 	const category_name = req.params.category_name;
+		// 	const products = await bookingCollection
+		// 		.find({ category_name: category_name })
+		// 		.toArray();
+		// 	res.send(products);
+		// });
+		
 
 		// Send a ping to confirm a successful connection
 		await client.db("admin").command({ ping: 1 });

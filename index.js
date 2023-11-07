@@ -132,7 +132,7 @@ async function run() {
 						$set: { "rooms.room_number": updateRoomCount },
 					}
 				);
-				
+
 				const result = await bookingCollection.insertOne(newBooking);
 				res.send(result);
 			} else {
@@ -145,31 +145,6 @@ async function run() {
 			const result = await cursor.toArray();
 			res.send(result);
 		});
-		app.put("/bookings/:id", async (req, res) => {
-			const id = req.params.id;
-			const filter = { _id: new ObjectId(id) };
-			const updatedData = req.body;
-			const updatedDoc = {
-				$set: {
-					checkIn: updatedData.checkIn
-				}
-			}
-			const result = await bookingCollection.updateOne(filter, updatedDoc);
-			if (result.modifiedCount === 1) {
-				// Document was successfully deleted
-				// You can send the deleted data as a response if needed
-				res.send({
-					message: "Booking deleted successfully",
-					deletedId: id,
-				});
-			} else {
-				// No document was deleted
-				res.status(404).send({ message: "Booking not found" });
-			}
-			res.send(result);
-
-			
-		});
 
 		app.get("/bookings/:email", async (req, res) => {
 			const email = req.params.email;
@@ -177,6 +152,42 @@ async function run() {
 				.find({ email: email })
 				.toArray();
 			res.send(products);
+		});
+		app.put("/bookings/:id", async (req, res) => {
+			const id = req.params.id;
+
+			// Check if the id is in a valid format
+			// if (!ObjectId.isValid(id)) {
+			// 	return res
+			// 		.status(400)
+			// 		.json({ message: "Invalid ObjectId format" });
+			// }
+			const query = { _id: new ObjectId(id) };
+
+			const updatedDate = req.body;
+			console.log("Received updatedDate:", updatedDate); // Debugging
+			console.log("Query:", query); // Debugging
+
+			//console.log(updatedDate);
+			//console.log(updatedData);
+			const updatedDoc = {
+				$set: {
+					checkIn: updatedDate.checkIn,
+				},
+			};
+			const result = await bookingCollection.updateOne(query, updatedDoc);
+			if (result.modifiedCount === 1) {
+				// Document was successfully deleted
+				// You can send the deleted data as a response if needed
+				res.send({
+					message: "Date Updated successfully",
+					
+				});
+			} else {
+				// No document was deleted
+				res.status(404).send({ message: "Date not found" });
+			}
+			//res.send(result);
 		});
 		app.delete("/bookings/:id", async (req, res) => {
 			const id = req.params.id;

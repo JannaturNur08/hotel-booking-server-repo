@@ -32,8 +32,7 @@ const client = new MongoClient(uri, {
 const logger = async (req, res, next) => {
 	console.log("called", req.host);
 	next();
-}
-
+};
 
 //verify token and grant access
 
@@ -51,9 +50,9 @@ const verifyToken = async (req, res, next) => {
 			return res.status(401).send({ message: "unauthorized" });
 		}
 		//if token is valid it would be decoded
-		console.log("value in the token", decoded)
+		console.log("value in the token", decoded);
 		//attach decoded user so that others can get it
-		req.user=decoded;
+		req.user = decoded;
 		next();
 	});
 };
@@ -64,10 +63,10 @@ async function run() {
 		await client.connect();
 
 		const roomCollection = client.db("hotelBook").collection("rooms");
-		const bookingCollection = client.db('hotelBook').collection('bookings');
+		const bookingCollection = client.db("hotelBook").collection("bookings");
 
 		//jwt
-		app.post("/jwt",logger, async (req, res) => {
+		app.post("/jwt", logger, async (req, res) => {
 			//send to client
 			const user = req.body;
 			const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
@@ -78,11 +77,11 @@ async function run() {
 				secure: false,
 			}).send({ success: true });
 		});
-		app.post('/logout', async(req,res)=> {
+		app.post("/logout", async (req, res) => {
 			const user = req.body;
-			console.log('logging out',user);
-			res.clearCookie('token',{maxAge: 0}).send({success:true})
-		})
+			console.log("logging out", user);
+			res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+		});
 
 		app.get("/room", async (req, res) => {
 			const cursor = roomCollection.find();
@@ -99,13 +98,50 @@ async function run() {
 		});
 
 		app.post("/bookings", async (req, res) => {
-			const newBook = req.body;
-			const result = await bookingCollection.insertOne(newBook);
-			res.send(result);
+			const newBooking = req.body;
+			console.log(newBooking);
+
+			const category_name = newBooking.category_name;
+			const availableRooms = await roomCollection.findOne({
+				category_name: category_name,
+			});
+			console.log(availableRooms);
+
+			if (
+				availableRooms &&
+				availableRooms.rooms.room_number >= newBooking.room_number
+			) {
+				const updateRoomCount =
+					availableRooms.rooms.room_number - newBooking.room_number;
+				console.log(updateRoomCount);
+				await roomCollection.updateOne(
+					{ category_name: category_name },
+					{
+						$set: { "rooms.room_number": updateRoomCount },
+					}
+				);
+				const result = await bookingCollection.insertOne(newBooking);
+				res.send(result);
+			} else {
+				res.status(400).json({ message: "Not enough available rooms" });
+			}
 		});
 		app.get("/bookings", async (req, res) => {
 			const cursor = bookingCollection.find();
 			const result = await cursor.toArray();
+			res.send(result);
+		});
+		app.get("/bookings/:email", async (req, res) => {
+			const email = req.params.email;
+			const products = await bookingCollection
+				.find({ email: email })
+				.toArray();
+			res.send(products);
+		});
+		app.delete("/bookings/:id", async (req, res) => {
+			const id = req.params.id;
+			const query = { _id: new ObjectId(id) };
+			const result = await bookingCollection.deleteOne(query);
 			res.send(result);
 		});
 

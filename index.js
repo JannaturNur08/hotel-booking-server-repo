@@ -153,9 +153,17 @@ async function run() {
 		});
 		app.delete("/bookings/:id", async (req, res) => {
 			const id = req.params.id;
-			const query = { _id: new ObjectId(id)};
+			const query = { _id:new ObjectId(id)};
 			const result = await bookingCollection.deleteOne(query);
-			res.send(result);
+			if (result.deletedCount === 1) {
+				// Document was successfully deleted
+				// You can send the deleted data as a response if needed
+				res.send({ message: 'Booking deleted successfully', deletedId: id });
+			} else {
+				// No document was deleted
+				res.status(404).send({ message: 'Booking not found' });
+			}
+			//res.send(result);
 		});
 		
 		// app.get("/bookings/:category_name", async (req, res) => {

@@ -70,7 +70,7 @@ async function run() {
 			//send to client
 			const user = req.body;
 			const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
-				expiresIn: "1h",
+				expiresIn: "3h",
 			}); // post the name as a token
 			res.cookie("token", token, {
 				httpOnly: true,
@@ -101,6 +101,7 @@ async function run() {
 			const newBooking = req.body;
 			console.log(newBooking);
 			const category_name = newBooking.category_name;
+			const updatedDate = newBooking.updatedDate;
 			const existingBookings = await bookingCollection
 				.find({
 					category_name: category_name,
@@ -108,7 +109,7 @@ async function run() {
 					checkOut: { $gte: newBooking.checkIn },
 				})
 				.toArray();
-				console.log("existing bookings",existingBookings);
+			console.log("existing bookings", existingBookings);
 
 			const availableRooms = await roomCollection.findOne({
 				category_name: category_name,
@@ -124,13 +125,14 @@ async function run() {
 			if (availableRoomCount >= newBooking.room_number) {
 				const updateRoomCount =
 					availableRoomCount - newBooking.room_number;
-				console.log('updated room count', updateRoomCount);
+				console.log("updated room count", updateRoomCount);
 				await roomCollection.updateOne(
 					{ category_name: category_name },
 					{
 						$set: { "rooms.room_number": updateRoomCount },
 					}
 				);
+				
 				const result = await bookingCollection.insertOne(newBooking);
 				res.send(result);
 			} else {
@@ -143,7 +145,32 @@ async function run() {
 			const result = await cursor.toArray();
 			res.send(result);
 		});
-		
+		app.put("/bookings/:id", async (req, res) => {
+			const id = req.params.id;
+			const filter = { _id: new ObjectId(id) };
+			const updatedData = req.body;
+			const updatedDoc = {
+				$set: {
+					checkIn: updatedData.checkIn
+				}
+			}
+			const result = await bookingCollection.updateOne(filter, updatedDoc);
+			if (result.modifiedCount === 1) {
+				// Document was successfully deleted
+				// You can send the deleted data as a response if needed
+				res.send({
+					message: "Booking deleted successfully",
+					deletedId: id,
+				});
+			} else {
+				// No document was deleted
+				res.status(404).send({ message: "Booking not found" });
+			}
+			res.send(result);
+
+			
+		});
+
 		app.get("/bookings/:email", async (req, res) => {
 			const email = req.params.email;
 			const products = await bookingCollection
@@ -153,27 +180,29 @@ async function run() {
 		});
 		app.delete("/bookings/:id", async (req, res) => {
 			const id = req.params.id;
-			const query = { _id:new ObjectId(id)};
+			const query = { _id: new ObjectId(id) };
 			const result = await bookingCollection.deleteOne(query);
 			if (result.deletedCount === 1) {
 				// Document was successfully deleted
 				// You can send the deleted data as a response if needed
-				res.send({ message: 'Booking deleted successfully', deletedId: id });
+				res.send({
+					message: "Booking deleted successfully",
+					deletedId: id,
+				});
 			} else {
 				// No document was deleted
-				res.status(404).send({ message: 'Booking not found' });
+				res.status(404).send({ message: "Booking not found" });
 			}
 			//res.send(result);
 		});
-		
-		// app.get("/bookings/:category_name", async (req, res) => {
-		// 	const category_name = req.params.category_name;
-		// 	const products = await bookingCollection
-		// 		.find({ category_name: category_name })
-		// 		.toArray();
-		// 	res.send(products);
-		// });
-		
+
+		app.get("/bookings/:category_name", async (req, res) => {
+			const category_name = req.params.category_name;
+			const products = await bookingCollection
+				.find({ category_name: category_name })
+				.toArray();
+			res.send(products);
+		});
 
 		// Send a ping to confirm a successful connection
 		await client.db("admin").command({ ping: 1 });

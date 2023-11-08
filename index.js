@@ -98,45 +98,68 @@ async function run() {
 		});
 
 		app.post("/bookings", async (req, res) => {
-			const newBooking = req.body;
-			console.log(newBooking);
-			const category_name = newBooking.category_name;
-			const updatedDate = newBooking.updatedDate;
-			const existingBookings = await bookingCollection
-				.find({
-					category_name: category_name,
-					checkIn: { $lte: newBooking.checkOut },
-					checkOut: { $gte: newBooking.checkIn },
-				})
-				.toArray();
-			console.log("existing bookings", existingBookings);
+			try {
+				const newBooking = req.body;
+				const { category_name, checkIn, checkOut, room_number } =
+					newBooking;
 
-			const availableRooms = await roomCollection.findOne({
-				category_name: category_name,
-			});
-			console.log(availableRooms);
-			const totalRooms = availableRooms.rooms.room_number;
-			const roomsBooked = existingBookings.reduce(
-				(total, booking) => total + booking.room_number,
-				0
-			);
-			const availableRoomCount = totalRooms - roomsBooked;
+				// Get the existing bookings to check for room availability
+				const existingBookings = await bookingCollection
+					.find({
+						category_name,
+						checkIn: { $lte: checkOut },
+						checkOut: { $gte: checkIn },
+					})
+					.toArray();
 
-			if (availableRoomCount >= newBooking.room_number) {
-				const updateRoomCount =
-					availableRoomCount - newBooking.room_number;
-				console.log("updated room count", updateRoomCount);
-				await roomCollection.updateOne(
-					{ category_name: category_name },
-					{
-						$set: { "rooms.room_number": updateRoomCount },
-					}
+				// Get the total number of rooms available
+				const availableRooms = await roomCollection.findOne({
+					category_name,
+				});
+				const totalRooms = parseInt(
+					availableRooms.rooms.room_number);
+				const roomsBooked = existingBookings.reduce(
+					(total, booking) =>
+						total + parseInt(booking.room_number),
+					0
 				);
+				const availableRoomCount = totalRooms - roomsBooked;
 
-				const result = await bookingCollection.insertOne(newBooking);
-				res.send(result);
-			} else {
-				res.status(400).json({ message: "Not enough available rooms" });
+				// Check if there are enough rooms available for the new booking
+				if (availableRoomCount >= room_number) {
+					// Insert the new booking
+					const result = await bookingCollection.insertOne(
+						newBooking
+					);
+
+					// Update the room count only if the booking was successful
+					if (result.insertedId) {
+						res.send({ success: true, result });
+
+						// This logic assumes room count should be decremented after a successful booking
+						// and updated in the 'roomCollection' database
+						const updateRoomCount = totalRooms - room_number;
+						await roomCollection.updateOne(
+							{ category_name },
+							{ $set: { "rooms.room_number": updateRoomCount } }
+						);
+					} else {
+						res.status(500).json({
+							success: false,
+							message: "Failed to insert booking",
+						});
+					}
+				} else {
+					res.status(400).json({
+						message: "Not enough available rooms",
+					});
+				}
+			} catch (error) {
+				res.status(500).json({
+					success: false,
+					message: "An error occurred",
+					error,
+				});
 			}
 		});
 
@@ -181,7 +204,6 @@ async function run() {
 				// You can send the deleted data as a response if needed
 				res.send({
 					message: "Date Updated successfully",
-					
 				});
 			} else {
 				// No document was deleted
@@ -207,7 +229,7 @@ async function run() {
 			//res.send(result);
 		});
 
-		app.get("/bookings/:category_name", async (req, res) => {
+		app.get("/booking/:category_name", async (req, res) => {
 			const category_name = req.params.category_name;
 			const products = await bookingCollection
 				.find({ category_name: category_name })

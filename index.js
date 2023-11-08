@@ -68,6 +68,7 @@ async function run() {
 		const roomCategoriesCollection = client
 			.db("hotelBook")
 			.collection("roomCategories");
+		const reviewsCollection = client.db("hotelBook").collection("reviews");
 
 		//jwt
 		app.post("/jwt", logger, async (req, res) => {
@@ -86,7 +87,7 @@ async function run() {
 			console.log("logging out", user);
 			res.clearCookie("token", { maxAge: 0 }).send({ success: true });
 		});
- 
+
 		// get all roomcategories data
 		app.get("/room", async (req, res) => {
 			const cursor = roomCategoriesCollection.find();
@@ -102,6 +103,22 @@ async function run() {
 			const room = await roomCategoriesCollection.findOne(filter);
 
 			res.send(room);
+		});
+
+		// // get all reviews data
+		// app.get("/reviews", async (req, res) => {
+		// 	const cursor = reviewsCollection.find();
+		// 	const result = await cursor.toArray();
+		// 	res.send(result);
+		// });
+
+		//  reviews by categoryId
+		app.get("/api/reviews", async (req, res) => {
+			const categoryId = new ObjectId(req.query.categoryId);
+			// Fetch reviews from the database where `categoryId` matches
+			const cursor = reviewsCollection.find({categoryId: categoryId});
+			const reviews = await cursor.toArray();
+			res.send(reviews);
 		});
 
 		// get booked data

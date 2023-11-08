@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
+const moment = require("moment");
 const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
@@ -62,8 +63,11 @@ async function run() {
 		// Connect the client to the server	(optional starting in v4.7)
 		await client.connect();
 
-		const roomCollection = client.db("hotelBook").collection("rooms");
+		//const roomCollection = client.db("hotelBook").collection("rooms");
 		const bookingCollection = client.db("hotelBook").collection("bookings");
+		const roomCategoriesCollection = client
+			.db("hotelBook")
+			.collection("roomCategories");
 
 		//jwt
 		app.post("/jwt", logger, async (req, res) => {
@@ -82,135 +86,41 @@ async function run() {
 			console.log("logging out", user);
 			res.clearCookie("token", { maxAge: 0 }).send({ success: true });
 		});
-
+ 
+		// get all roomcategories data
 		app.get("/room", async (req, res) => {
-			const cursor = roomCollection.find();
+			const cursor = roomCategoriesCollection.find();
 			const result = await cursor.toArray();
 			res.send(result);
 		});
+
+		// get roomcategories data by id
 		app.get("/room/:id", async (req, res) => {
 			const id = req.params.id;
 			const filter = { _id: new ObjectId(id) };
 
-			const room = await roomCollection.findOne(filter);
+			const room = await roomCategoriesCollection.findOne(filter);
 
 			res.send(room);
 		});
 
-		app.post("/bookings", async (req, res) => {
-			try {
-				const newBooking = req.body;
-				const { category_name, checkIn, checkOut, room_number } =
-					newBooking;
-
-				// Get the existing bookings to check for room availability
-				const existingBookings = await bookingCollection
-					.find({
-						category_name,
-						checkIn: { $lte: checkOut },
-						checkOut: { $gte: checkIn },
-					})
-					.toArray();
-
-				// Get the total number of rooms available
-				const availableRooms = await roomCollection.findOne({
-					category_name,
-				});
-				const totalRooms = parseInt(
-					availableRooms.rooms.room_number);
-				const roomsBooked = existingBookings.reduce(
-					(total, booking) =>
-						total + parseInt(booking.room_number),
-					0
-				);
-				const availableRoomCount = totalRooms - roomsBooked;
-
-				// Check if there are enough rooms available for the new booking
-				if (availableRoomCount >= room_number) {
-					// Insert the new booking
-					const result = await bookingCollection.insertOne(
-						newBooking
-					);
-
-					// Update the room count only if the booking was successful
-					if (result.insertedId) {
-						res.send({ success: true, result });
-
-						// This logic assumes room count should be decremented after a successful booking
-						// and updated in the 'roomCollection' database
-						const updateRoomCount = totalRooms - room_number;
-						await roomCollection.updateOne(
-							{ category_name },
-							{ $set: { "rooms.room_number": updateRoomCount } }
-						);
-					} else {
-						res.status(500).json({
-							success: false,
-							message: "Failed to insert booking",
-						});
-					}
-				} else {
-					res.status(400).json({
-						message: "Not enough available rooms",
-					});
-				}
-			} catch (error) {
-				res.status(500).json({
-					success: false,
-					message: "An error occurred",
-					error,
-				});
-			}
-		});
-
+		// get booked data
 		app.get("/bookings", async (req, res) => {
 			const cursor = bookingCollection.find();
 			const result = await cursor.toArray();
 			res.send(result);
 		});
 
-		app.get("/bookings/:email", async (req, res) => {
-			const email = req.params.email;
-			const products = await bookingCollection
-				.find({ email: email })
+		// filter booking by userId
+		app.get("/bookings/:userId", async (req, res) => {
+			const userId = req.params.userId;
+			const bookings = await bookingCollection
+				.find({ userId: new ObjectId(userId) })
 				.toArray();
-			res.send(products);
+			res.send(bookings);
 		});
-		app.put("/bookings/:id", async (req, res) => {
-			const id = req.params.id;
 
-			// Check if the id is in a valid format
-			// if (!ObjectId.isValid(id)) {
-			// 	return res
-			// 		.status(400)
-			// 		.json({ message: "Invalid ObjectId format" });
-			// }
-			const query = { _id: new ObjectId(id) };
-
-			const updatedDate = req.body;
-			console.log("Received updatedDate:", updatedDate); // Debugging
-			console.log("Query:", query); // Debugging
-
-			//console.log(updatedDate);
-			//console.log(updatedData);
-			const updatedDoc = {
-				$set: {
-					checkIn: updatedDate.checkIn,
-				},
-			};
-			const result = await bookingCollection.updateOne(query, updatedDoc);
-			if (result.modifiedCount === 1) {
-				// Document was successfully deleted
-				// You can send the deleted data as a response if needed
-				res.send({
-					message: "Date Updated successfully",
-				});
-			} else {
-				// No document was deleted
-				res.status(404).send({ message: "Date not found" });
-			}
-			//res.send(result);
-		});
+		// booking cancellation
 		app.delete("/bookings/:id", async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
@@ -229,14 +139,6 @@ async function run() {
 			//res.send(result);
 		});
 
-		app.get("/booking/:category_name", async (req, res) => {
-			const category_name = req.params.category_name;
-			const products = await bookingCollection
-				.find({ category_name: category_name })
-				.toArray();
-			res.send(products);
-		});
-
 		// Send a ping to confirm a successful connection
 		await client.db("admin").command({ ping: 1 });
 		console.log(
@@ -250,7 +152,8 @@ async function run() {
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-	res.send("Hotel-Booking Server is running");
+	let currentDate = moment().format("YYYY-MM-DD");
+	res.send(`Hotel-Booking Server is running on ${currentDate}`);
 });
 
 app.listen(port, () => {

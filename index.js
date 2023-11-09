@@ -133,6 +133,7 @@ async function run() {
 			const result = await cursor.toArray();
 			res.send(result);
 		});
+		
 
 		app.get("/bookings/:email", async (req, res) => {
 			const email = req.params.email;
@@ -141,10 +142,24 @@ async function run() {
 				.toArray();
 			res.send(products);
 		});
+		// get booked data
+		app.put("/booking/:id", async (req, res) => {
+			const id = new ObjectId(req.params.id);
+			const filter = { _id: new ObjectId(id) };
+
+			const updatedDate = req.body;
+			const UpdatedDoc = {
+				$set: {
+					bookingDate : updatedDate.bookingDate,
+				},
+			};
+			const result = await bookingCollection.updateOne(filter, UpdatedDoc);
+			res.send(result);
+		});
 
 		//booking cancellation
-		app.delete("/bookings/:id", async (req, res) => {
-			const id = new ObjectId(req.params.id);
+		app.delete("/bookings/:bookingId", async (req, res) => {
+			const id = new ObjectId(req.params.bookingId);
 			const query = { _id: new ObjectId(id) };
 			const result = await bookingCollection.deleteOne(query);
 			if (result.deletedCount === 1) {

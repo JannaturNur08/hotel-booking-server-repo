@@ -105,13 +105,20 @@ async function run() {
 			res.send(room);
 		});
 
-		// // get all reviews data
-		// app.get("/reviews", async (req, res) => {
-		// 	const cursor = reviewsCollection.find();
-		// 	const result = await cursor.toArray();
-		// 	res.send(result);
-		// });
+		
 
+		// post reviews by categoryId
+		app.post("/api/reviews", async (req, res) => {
+			const newReview = req.body;
+			const reviews = await reviewsCollection.insertOne(newReview);
+			res.send(reviews);
+		});
+		// get reviews by categoryId
+		app.get("/api/reviews", async (req, res) => {
+			const cursor = reviewsCollection.find();
+			const result = await cursor.toArray();
+			res.send(result);
+		});
 		// get reviews by categoryId
 		app.get("/api/reviews", async (req, res) => {
 			const categoryId = new ObjectId(req.query.categoryId);
@@ -141,7 +148,7 @@ async function run() {
 				.toArray();
 			res.send(products);
 		});
-		// get booked data
+		// update booked date
 		app.put("/booking/:id", async (req, res) => {
 			try {
 				const id = new ObjectId(req.params.id);
@@ -175,7 +182,7 @@ async function run() {
 			}
 		});
 
-		//booking cancellation
+		//booking cancelation
 		app.delete("/bookings/:bookingId", async (req, res) => {
 			const id = new ObjectId(req.params.bookingId);
 			const query = { _id: new ObjectId(id) };

@@ -112,7 +112,7 @@ async function run() {
 		// 	res.send(result);
 		// });
 
-		//  reviews by categoryId
+		// get reviews by categoryId
 		app.get("/api/reviews", async (req, res) => {
 			const categoryId = new ObjectId(req.query.categoryId);
 			// Fetch reviews from the database where `categoryId` matches
@@ -121,6 +121,12 @@ async function run() {
 			res.send(reviews);
 		});
 
+		// post booked data
+		app.post("/bookings", async (req, res) => {
+			const newBooking = req.body;
+			const result = await bookingCollection.insertOne(newBooking);
+			res.send(result);
+		});
 		// get booked data
 		app.get("/bookings", async (req, res) => {
 			const cursor = bookingCollection.find();

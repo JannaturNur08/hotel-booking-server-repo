@@ -116,7 +116,7 @@ async function run() {
 		app.get("/api/reviews", async (req, res) => {
 			const categoryId = new ObjectId(req.query.categoryId);
 			// Fetch reviews from the database where `categoryId` matches
-			const cursor = reviewsCollection.find({categoryId: categoryId});
+			const cursor = reviewsCollection.find({ categoryId: categoryId });
 			const reviews = await cursor.toArray();
 			res.send(reviews);
 		});
@@ -133,7 +133,6 @@ async function run() {
 			const result = await cursor.toArray();
 			res.send(result);
 		});
-		
 
 		app.get("/bookings/:email", async (req, res) => {
 			const email = req.params.email;
@@ -144,17 +143,36 @@ async function run() {
 		});
 		// get booked data
 		app.put("/booking/:id", async (req, res) => {
-			const id = new ObjectId(req.params.id);
-			const filter = { _id: new ObjectId(id) };
+			try {
+				const id = new ObjectId(req.params.id);
+				const filter = { _id: new ObjectId(id) };
 
-			const updatedDate = req.body;
-			const UpdatedDoc = {
-				$set: {
-					bookingDate : updatedDate.bookingDate,
-				},
-			};
-			const result = await bookingCollection.updateOne(filter, UpdatedDoc);
-			res.send(result);
+				const updatedDate = req.body;
+				const UpdatedDoc = {
+					$set: {
+						bookingDate: updatedDate.bookingDate,
+					},
+				};
+				const result = await bookingCollection.updateOne(
+					filter,
+					UpdatedDoc
+				);
+				if (result.modifiedCount === 0) {
+					res.status(404).send({
+						message: "No bookings were updated",
+					});
+				} else {
+					res.send({
+						message: "Booking updated successfully",
+						result,
+					});
+				}
+			} catch (error) {
+				res.status(500).send({
+					message: "Error updating booking",
+					error,
+				});
+			}
 		});
 
 		//booking cancellation
@@ -175,7 +193,6 @@ async function run() {
 			}
 			//res.send(result);
 		});
-		
 
 		// Send a ping to confirm a successful connection
 		await client.db("admin").command({ ping: 1 });

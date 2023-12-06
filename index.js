@@ -11,10 +11,11 @@ const port = process.env.PORT || 3000;
 //middleware
 app.use(
 	cors({
-		 origin: [ 
-	'https://hotel-book-client-86c05.web.app/',
-'https://hotel-book-client-86c05.firebaseapp.com/',
-'https://654d1471375e6d006ee5f58a--eclectic-cuchufli-993dab.netlify.app/' ],// update to match the URL of your react frontend
+		origin: [
+			"https://hotel-book-client-86c05.web.app",
+			"https://hotel-book-client-86c05.firebaseapp.com",
+			"https://654d1471375e6d006ee5f58a--eclectic-cuchufli-993dab.netlify.app",
+		], // update to match the URL of your react frontend
 		credentials: true,
 	})
 ); //allow cross origin resource sharing (CORS)
@@ -64,7 +65,7 @@ const verifyToken = async (req, res, next) => {
 async function run() {
 	try {
 		// Connect the client to the server	(optional starting in v4.7)
-		//await client.connect();
+		//client.connect();
 
 		//const roomCollection = client.db("hotelBook").collection("rooms");
 		const bookingCollection = client.db("hotelBook").collection("bookings");
@@ -82,7 +83,7 @@ async function run() {
 			}); // post the name as a token
 			res.cookie("token", token, {
 				httpOnly: true,
-				secure: false,
+				secure: process.env.NODE_ENV === "production", // Only set secure cookies in production
 			}).send({ success: true });
 		});
 		app.post("/logout", async (req, res) => {
@@ -107,8 +108,6 @@ async function run() {
 
 			res.send(room);
 		});
-
-		
 
 		// post reviews by categoryId
 		app.post("/api/reviews", async (req, res) => {
@@ -205,7 +204,7 @@ async function run() {
 		});
 
 		// Send a ping to confirm a successful connection
-		await client.db("admin").command({ ping: 1 });
+		//await client.db("admin").command({ ping: 1 });
 		console.log(
 			"Pinged your deployment. You successfully connected to MongoDB!"
 		);
